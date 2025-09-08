@@ -78,16 +78,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & publish amd64 image with pack
-        env:
-          DOCKER_DEFAULT_PLATFORM: linux/amd64
-        run: |
-          pack build ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-amd64 \
-            --buildpack gcr.io/paketo-buildpacks/nginx \
-            --builder paketobuildpacks/builder-jammy-base \
-            --path dist \
-            --publish
-
       - name: Build & publish arm64 image with pack
         env:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
@@ -102,6 +92,6 @@ jobs:
         run: |
           docker buildx imagetools create \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-amd64 \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-arm64
           docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+
