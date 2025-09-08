@@ -83,7 +83,7 @@ jobs:
           DOCKER_DEFAULT_PLATFORM: linux/arm64
         run: |
           pack build ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-arm64 \
-            --buildpack gcr.io/paketo-buildpacks/nginx \
+            --buildpack paketo-buildpacks/nginx \
             --builder paketobuildpacks/builder-jammy-base \
             --path dist \
             --publish
