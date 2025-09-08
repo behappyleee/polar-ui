@@ -61,18 +61,41 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      # 멀티아키 빌드 & 푸시 (dist를 context로 삼고 Dockerfile 사용)
-      - name: Build and push multi-arch image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          # M1(arm64) & x86(amd64) 동시 지원
-          platforms: linux/amd64,linux/arm64
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            # QEMU/Buildx 준비 (arm64 빌드를 위해 필요)
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            # 1) amd64 이미지 생성 & 푸시 (pack + nginx buildpack)
+            - name: Build & publish amd64 image with pack
+              env:
+                DOCKER_DEFAULT_PLATFORM: linux/amd64
+              run: |
+                pack build ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-amd64 \
+                  --buildpack gcr.io/paketo-buildpacks/nginx \
+                  --builder paketobuildpacks/builder-jammy-base \
+                  --path dist \
+                  --publish
+
+            # 2) arm64 이미지 생성 & 푸시 (pack + nginx buildpack)
+            - name: Build & publish arm64 image with pack
+              env:
+                DOCKER_DEFAULT_PLATFORM: linux/arm64
+              run: |
+                pack build ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-arm64 \
+                  --buildpack gcr.io/paketo-buildpacks/nginx \
+                  --builder paketobuildpacks/builder-jammy-base \
+                  --path dist \
+                  --publish
+
+            # 3) 두 이미지를 하나의 멀티아키 manifest(:latest)로 묶기
+            - name: Create and push multi-arch manifest
+              run: |
+                docker buildx imagetools create \
+                  -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
+                  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-amd64 \
+                  ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}-arm64
+                # 확인(Optional)
+                docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
