@@ -46,3 +46,4 @@ task nginxConfig(type: Copy) {
 task clean(type: Delete) {
 	delete "dist"
 }
+
